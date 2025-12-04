@@ -26,15 +26,19 @@ class Task(BaseModel):
     status: TaskStatus = TaskStatus.UNCLAIMED
     branch: str
     session: Optional[str] = None
-    dependencies: List[str] = []  # List of task IDs that must be completed first
-    priority: int = 0  # Higher priority tasks are assigned first (0 = normal, 1+ = higher)
+    # List of task IDs that must be completed first
+    dependencies: List[str] = []
+    # Higher priority tasks are assigned first (0 = normal, 1+ = higher)
+    priority: int = 0
     owned_files: List[str] = []  # Files exclusively owned by this task
     shared_files: List[str] = []  # Files that may be modified (with care)
     creates_files: List[str] = []  # New files this task will create
     merge_order: int = 0  # Explicit merge sequence order
     exclusive_files: List[str] = []  # Files only this task should modify
-    shared_files: List[str] = []  # Files that might be modified (requires coordination)
-    initialization_deps: List[str] = []  # Tasks whose output is needed for setup
+    # Files that might be modified (requires coordination)
+    shared_files: List[str] = []
+    # Tasks whose output is needed for setup
+    initialization_deps: List[str] = []
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     completed_at: Optional[datetime] = None
@@ -63,15 +67,17 @@ class Project(BaseModel):
     path: str
     description: Optional[str] = None
     project_overview: Optional[str] = None  # Detailed project description
-    initial_prompt: Optional[str] = None    # Initial prompt for plan generation
+    # Initial prompt for plan generation
+    initial_prompt: Optional[str] = None
     plan: Optional[str] = None              # Generated project plan
     max_agents: int = 5
     active: bool = True
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     git_remote: Optional[str] = None
-    is_git_repo: Optional[bool] = None      # Whether the project path is a Git repository
-    
+    # Whether the project path is a Git repository
+    is_git_repo: Optional[bool] = None
+
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat()
@@ -97,8 +103,14 @@ class OrchestratorConfig(BaseModel):
     merge_strategy: str = "merge"  # merge, squash, ff
     auto_spawn_interval: int = 60  # seconds
     enabled: bool = False
-    anthropic_api_key: Optional[str] = None  # API key for plan generation
-    anthropic_model: str = "claude-sonnet-4-20250514"  # Model to use for generation
+    # API provider: "anthropic", "openai", "azure", etc.
+    api_provider: str = "anthropic"
+    api_key: Optional[str] = None  # Generic API key for plan generation
+    api_model: str = "claude-sonnet-4-20250514"  # Model to use for generation
+    # Base URL for API endpoint (for custom/self-hosted providers)
+    api_base_url: Optional[str] = None
+    # API version (for providers that require it)
+    api_version: Optional[str] = None
 
 
 class PlanGenerationRequest(BaseModel):
@@ -110,7 +122,8 @@ class PlanGenerationRequest(BaseModel):
 class PlanGenerationResponse(BaseModel):
     """Response model for plan generation"""
     plan: str
-    suggested_tasks: List[Dict[str, str]]  # List of task titles and descriptions
+    # List of task titles and descriptions
+    suggested_tasks: List[Dict[str, str]]
 
 
 class WebSocketMessage(BaseModel):

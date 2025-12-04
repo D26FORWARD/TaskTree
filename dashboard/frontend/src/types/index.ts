@@ -68,8 +68,11 @@ export interface OrchestratorConfig {
   merge_strategy: string;
   auto_spawn_interval: number;
   enabled: boolean;
-  anthropic_api_key?: string;
-  anthropic_model: string;
+  api_provider: string;  // API provider: "anthropic", "openai", "azure", etc.
+  api_key?: string;  // Generic API key for plan generation
+  api_model: string;  // Model to use for generation
+  api_base_url?: string;  // Base URL for API endpoint (for custom/self-hosted providers)
+  api_version?: string;  // API version (for providers that require it)
 }
 
 export interface WebSocketMessage {

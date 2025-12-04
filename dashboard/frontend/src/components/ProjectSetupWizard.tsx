@@ -17,9 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { api } from '@/services/api';
 import { FolderPicker } from '@/components/FolderPicker';
-import { 
-  Folder, 
-  CheckCircle2, 
+import {
+  Folder,
+  CheckCircle2,
   Info,
   AlertCircle,
   ChevronRight,
@@ -47,7 +47,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
   const [currentStep, setCurrentStep] = useState(0);
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   const queryClient = useQueryClient();
-  
+
   // Form data
   const [projectData, setProjectData] = useState({
     name: '',
@@ -59,7 +59,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
     dartWorkspace: '',
     dartDartboard: '',
   });
-  
+
   // Setup status
   const [setupStatus, setSetupStatus] = useState({
     hasApiKey: false,
@@ -67,23 +67,23 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
     gitRemoteUrl: '',
     hasDartIntegration: false,
   });
-  
+
   // Check API key status
   useEffect(() => {
     const checkApiKey = async () => {
       try {
         const config = await api.getOrchestratorConfig();
-        setSetupStatus(prev => ({ ...prev, hasApiKey: !!config.anthropic_api_key }));
+        setSetupStatus(prev => ({ ...prev, hasApiKey: !!config.api_key }));
       } catch (error) {
         console.error('Failed to check API key:', error);
       }
     };
-    
+
     if (open && currentStep === 1) {
       checkApiKey();
     }
   }, [open, currentStep]);
-  
+
   // Check Git status when path changes
   useEffect(() => {
     const checkGitStatus = async () => {
@@ -111,16 +111,16 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
         }
       }
     };
-    
+
     checkGitStatus();
   }, [projectData.path, currentStep]);
-  
+
   const createProjectMutation = useMutation({
     mutationFn: async () => {
       // Extract folder name from path for ID
       const folderName = projectData.path.split('/').pop() || projectData.name;
       const projectId = folderName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-      
+
       // Create the project
       const project = await api.createProject({
         id: projectId,
@@ -132,12 +132,12 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
         project_overview: projectData.projectOverview,
         initial_prompt: projectData.initialPrompt,
       });
-      
+
       // Check and initialize git if needed
       if (!setupStatus.isGitRepo) {
         await api.initGitRepo(projectId);
       }
-      
+
       // Generate tasks using Task Master AI if we have scope and prompt
       if (projectData.projectOverview && projectData.initialPrompt) {
         await api.generateTaskBreakdown(projectId, {
@@ -145,13 +145,13 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
           initial_prompt: projectData.initialPrompt,
         });
       }
-      
+
       return project;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.refetchQueries({ queryKey: ['projects'] });
-      
+
       // Reset form
       setProjectData({
         name: '',
@@ -164,7 +164,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
         dartDartboard: '',
       });
       setCurrentStep(0);
-      
+
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -172,8 +172,8 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
       alert(`Failed to create project: ${error.message}`);
     }
   });
-  
-  
+
+
   const canProceed = () => {
     switch (currentStep) {
       case 0: // Project details
@@ -188,7 +188,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
         return true;
     }
   };
-  
+
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -197,16 +197,16 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
       createProjectMutation.mutate();
     }
   };
-  
+
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
   };
-  
+
   const currentStepData = STEPS[currentStep];
   const Icon = currentStepData.icon;
-  
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,7 +220,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
               Let's set up your project step by step
             </DialogDescription>
           </DialogHeader>
-          
+
           {/* Progress indicator */}
           <div className="space-y-2">
             <Progress value={(currentStep + 1) / STEPS.length * 100} className="h-2" />
@@ -228,11 +228,10 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
               {STEPS.map((step, index) => {
                 const StepIcon = step.icon;
                 return (
-                  <div 
+                  <div
                     key={step.id}
-                    className={`flex items-center gap-1 ${
-                      index <= currentStep ? 'text-electric-cyan' : ''
-                    }`}
+                    className={`flex items-center gap-1 ${index <= currentStep ? 'text-electric-cyan' : ''
+                      }`}
                   >
                     <StepIcon className="h-3 w-3" />
                     <span className="hidden sm:inline">{step.title}</span>
@@ -241,7 +240,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
               })}
             </div>
           </div>
-          
+
           {/* Step content */}
           <div className="min-h-[400px]">
             <AnimatePresence mode="wait">
@@ -265,7 +264,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         <p className="text-sm text-muted-foreground">Choose a name and location for your project</p>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Project Name</Label>
@@ -278,7 +277,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           autoComplete="off"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="path">Project Path</Label>
                         <div className="flex space-x-2">
@@ -304,7 +303,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           Select an existing folder or create a new one
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="description">Description (Optional)</Label>
                         <Input
@@ -316,7 +315,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           autoComplete="off"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="maxAgents">Maximum Concurrent Agents</Label>
                         <Input
@@ -336,7 +335,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                     </div>
                   </div>
                 )}
-                
+
                 {/* Step 1: Project Scope */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
@@ -349,14 +348,14 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         <p className="text-sm text-muted-foreground">Define what you want to build</p>
                       </div>
                     </div>
-                    
+
                     <Alert className="border-electric-cyan/20 bg-electric-cyan/5">
                       <Info className="h-4 w-4 text-electric-cyan" />
                       <AlertDescription>
                         The Task Master AI will use this information to create a structured development plan with prioritized tasks for your AI agents.
                       </AlertDescription>
                     </Alert>
-                    
+
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="projectOverview">Project Overview</Label>
@@ -371,7 +370,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           Be specific about the type of application, target audience, and key features
                         </p>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="initialPrompt">Initial Development Goals</Label>
                         <textarea
@@ -385,7 +384,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           List the specific features, pages, or components you want built in this development session
                         </p>
                       </div>
-                      
+
                       <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                         <h4 className="font-medium text-sm flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-electric-cyan" />
@@ -395,7 +394,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           "A modern task management web app for software teams. Built with React and Node.js, it will feature real-time collaboration, sprint planning, and GitHub integration. Target users are small to medium development teams who need a lightweight alternative to Jira."
                         </p>
                       </div>
-                      
+
                       <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                         <h4 className="font-medium text-sm flex items-center gap-2">
                           <Sparkles className="h-4 w-4 text-electric-cyan" />
@@ -408,7 +407,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                     </div>
                   </div>
                 )}
-                
+
                 {/* Step 2: Dart Integration (Optional) */}
                 {currentStep === 2 && (
                   <div className="space-y-4">
@@ -421,14 +420,14 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         <p className="text-sm text-muted-foreground">Advanced project management and analytics</p>
                       </div>
                     </div>
-                    
+
                     <Alert className="border-electric-cyan/20 bg-electric-cyan/5">
                       <Info className="h-4 w-4 text-electric-cyan" />
                       <AlertDescription>
                         Dart is an AI-native project management tool that provides advanced task tracking, analytics, and team collaboration features.
                       </AlertDescription>
                     </Alert>
-                    
+
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="dartWorkspace">Dart Workspace ID (Optional)</Label>
@@ -441,7 +440,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           autoComplete="off"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label htmlFor="dartDartboard">Dart Dartboard ID (Optional)</Label>
                         <Input
@@ -453,7 +452,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           autoComplete="off"
                         />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <p className="text-sm text-muted-foreground">
                           Find these IDs in your Dart URL:
@@ -464,7 +463,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                           </code>
                         </div>
                       </div>
-                      
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -477,7 +476,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                     </div>
                   </div>
                 )}
-                
+
                 {/* Step 3: Review & Create */}
                 {currentStep === 3 && (
                   <div className="space-y-4">
@@ -490,7 +489,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         <p className="text-sm text-muted-foreground">Confirm your project settings</p>
                       </div>
                     </div>
-                    
+
                     <Card className="border-electric-cyan/20 bg-card/50">
                       <CardHeader>
                         <CardTitle className="text-base">Project Summary</CardTitle>
@@ -499,20 +498,20 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <span className="text-muted-foreground">Name:</span>
                           <span className="font-medium">{projectData.name}</span>
-                          
+
                           <span className="text-muted-foreground">Path:</span>
                           <span className="font-mono text-xs truncate">{projectData.path}</span>
-                          
+
                           {projectData.description && (
                             <>
                               <span className="text-muted-foreground">Description:</span>
                               <span className="truncate">{projectData.description}</span>
                             </>
                           )}
-                          
+
                           <span className="text-muted-foreground">Max Agents:</span>
                           <span>{projectData.maxAgents}</span>
-                          
+
                           <span className="text-muted-foreground">Git Repository:</span>
                           <span className="flex items-center gap-1">
                             {setupStatus.isGitRepo ? (
@@ -527,7 +526,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                               </>
                             )}
                           </span>
-                          
+
                           <span className="text-muted-foreground">API Key:</span>
                           <span className="flex items-center gap-1">
                             {setupStatus.hasApiKey ? (
@@ -542,7 +541,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                               </>
                             )}
                           </span>
-                          
+
                           <span className="text-muted-foreground">Project Scope:</span>
                           <span className="flex items-center gap-1">
                             {projectData.projectOverview ? (
@@ -557,7 +556,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                               </>
                             )}
                           </span>
-                          
+
                           {(projectData.dartWorkspace || projectData.dartDartboard) && (
                             <>
                               <span className="text-muted-foreground">Dart Integration:</span>
@@ -570,7 +569,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         </div>
                       </CardContent>
                     </Card>
-                    
+
                     {!setupStatus.hasApiKey && (
                       <Alert className="border-red-500/20 bg-red-500/5">
                         <AlertCircle className="h-4 w-4 text-red-500" />
@@ -579,7 +578,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                         </AlertDescription>
                       </Alert>
                     )}
-                    
+
                     {projectData.projectOverview && projectData.initialPrompt && (
                       <Alert className="border-electric-cyan/20 bg-electric-cyan/5">
                         <Sparkles className="h-4 w-4 text-electric-cyan" />
@@ -599,7 +598,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
               </motion.div>
             </AnimatePresence>
           </div>
-          
+
           <DialogFooter className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {currentStep > 0 && (
@@ -613,7 +612,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
                 </Button>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -622,7 +621,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
               >
                 Cancel
               </Button>
-              
+
               <Button
                 variant="glow"
                 onClick={handleNext}
@@ -649,7 +648,7 @@ export function ProjectSetupWizard({ open, onOpenChange }: ProjectSetupWizardPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <FolderPicker
         open={folderPickerOpen}
         onOpenChange={setFolderPickerOpen}

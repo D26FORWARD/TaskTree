@@ -2,37 +2,46 @@
 Claude Integration for SplitMind
 
 This module handles the integration between SplitMind and Claude Code for orchestration,
-and uses the Anthropic API for plan generation.
+and uses the Generic API Client for plan generation with support for multiple providers.
 """
 import os
 import json
 from pathlib import Path
 from typing import Dict, List, Optional
-from .anthropic_client import anthropic_client
+from .anthropic_client import GenericAPIClient
+
+# Create a generic API client instance
+generic_api_client = GenericAPIClient()
 
 
 class ClaudeIntegration:
     """
     Handles integration with Claude Code for plan generation and task execution.
-    
+
     Note: Claude Code doesn't have a CLI. Instead, this module:
     1. Generates prompts that can be used with Claude Code
     2. Provides instructions for manual integration
     3. Prepares command files that Claude Code can execute
     """
-    
+
     def __init__(self):
-        self.commands_dir = Path(__file__).parent.parent.parent / ".claude" / "commands"
-        
-    def generate_task_breakdown(self, project_info: Dict, api_key: Optional[str] = None, model: Optional[str] = None) -> Dict:
+        self.commands_dir = Path(
+            __file__).parent.parent.parent / ".claude" / "commands"
+
+    def generate_task_breakdown(self, project_info: Dict, api_key: Optional[str] = None,
+                                model: Optional[str] = None, api_provider: str = "anthropic",
+                                api_base_url: Optional[str] = None, api_version: Optional[str] = None) -> Dict:
         """
         Generate a structured task breakdown using the Task Master AI approach.
-        
+
         Args:
             project_info: Dictionary containing project details
-            api_key: Anthropic API key (optional, will use default if not provided)
+            api_key: API key (optional, will use default if not provided)
             model: Model to use (optional, will use default if not provided)
-        
+            api_provider: API provider (anthropic, openai, azure, etc.)
+            api_base_url: Base URL for API endpoint (for custom/self-hosted providers)
+            api_version: API version (for providers that require it)
+
         Returns:
             Dictionary containing:
                 - plan: Generated project plan
@@ -41,42 +50,54 @@ class ClaudeIntegration:
                 - success: Boolean indicating if the request was successful
                 - error: Error message if request failed
         """
-        # Update the client with the API key if provided
+        # Update the client with the API key and provider if provided
         if api_key:
-            anthropic_client.api_key = api_key
-        
-        # Call the Anthropic API with task master prompt
-        result = anthropic_client.generate_task_breakdown(project_info, model)
-        
+            generic_api_client.api_key = api_key
+        if api_provider:
+            generic_api_client.api_provider = api_provider
+        if api_base_url:
+            generic_api_client.base_url = api_base_url
+        if api_version:
+            generic_api_client.api_version = api_version
+
+        # Call the Generic API with task master prompt
+        result = generic_api_client.generate_task_breakdown(
+            project_info, model)
+
         # If successful, save both plan and task breakdown
         if result.get('success'):
             project_path = project_info.get('project_path', '')
             if project_path:
                 prompt_dir = Path(project_path) / ".splitmind" / "plans"
                 prompt_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 plan_file = prompt_dir / "generated-plan.md"
                 with open(plan_file, 'w') as f:
                     f.write(result['plan'])
-                
+
                 task_breakdown_file = prompt_dir / "task-breakdown.md"
                 with open(task_breakdown_file, 'w') as f:
                     f.write(result.get('task_breakdown', ''))
-                
+
                 result['plan_file'] = str(plan_file)
                 result['task_breakdown_file'] = str(task_breakdown_file)
-        
+
         return result
 
-    def generate_plan(self, project_info: Dict, api_key: Optional[str] = None, model: Optional[str] = None) -> Dict:
+    def generate_plan(self, project_info: Dict, api_key: Optional[str] = None,
+                      model: Optional[str] = None, api_provider: str = "anthropic",
+                      api_base_url: Optional[str] = None, api_version: Optional[str] = None) -> Dict:
         """
-        Generate a project plan using the Anthropic API.
-        
+        Generate a project plan using the Generic API Client.
+
         Args:
             project_info: Dictionary containing project details
-            api_key: Anthropic API key (optional, will use default if not provided)
+            api_key: API key (optional, will use default if not provided)
             model: Model to use (optional, will use default if not provided)
-        
+            api_provider: API provider (anthropic, openai, azure, etc.)
+            api_base_url: Base URL for API endpoint (for custom/self-hosted providers)
+            api_version: API version (for providers that require it)
+
         Returns:
             Dictionary containing:
                 - plan: Generated project plan
@@ -84,28 +105,34 @@ class ClaudeIntegration:
                 - success: Boolean indicating if the request was successful
                 - error: Error message if request failed
         """
-        # Update the client with the API key if provided
+        # Update the client with the API key and provider if provided
         if api_key:
-            anthropic_client.api_key = api_key
-        
-        # Call the Anthropic API
-        result = anthropic_client.generate_plan(project_info, model)
-        
+            generic_api_client.api_key = api_key
+        if api_provider:
+            generic_api_client.api_provider = api_provider
+        if api_base_url:
+            generic_api_client.base_url = api_base_url
+        if api_version:
+            generic_api_client.api_version = api_version
+
+        # Call the Generic API
+        result = generic_api_client.generate_plan(project_info, model)
+
         # If successful, also save the plan to a file for reference
         if result.get('success'):
             project_path = project_info.get('project_path', '')
             if project_path:
                 prompt_dir = Path(project_path) / ".splitmind" / "plans"
                 prompt_dir.mkdir(parents=True, exist_ok=True)
-                
+
                 plan_file = prompt_dir / "generated-plan.md"
                 with open(plan_file, 'w') as f:
                     f.write(result['plan'])
-                
+
                 result['plan_file'] = str(plan_file)
-        
+
         return result
-    
+
     def _parse_claude_response(self, claude_output: str) -> Dict:
         """Parse Claude's response to extract plan and tasks"""
         # Extract the plan section
@@ -114,14 +141,14 @@ class ClaudeIntegration:
             plan_start = claude_output.find("## Project Plan")
         if plan_start == -1:
             plan_start = 0
-        
+
         plan = claude_output[plan_start:].strip()
-        
+
         # Extract suggested tasks
         # Look for task patterns like "- Task: title" or "1. title"
         tasks = []
         lines = claude_output.split('\n')
-        
+
         current_task = None
         for line in lines:
             # Check for task title patterns
@@ -144,20 +171,20 @@ class ClaudeIntegration:
                 current_task["description"] = line.split(':', 1)[1].strip()
                 tasks.append(current_task)
                 current_task = None
-        
+
         # If we didn't find specific tasks, generate some based on the plan
         if not tasks:
             tasks = self._extract_tasks_from_plan(plan)
-        
+
         return {
             "plan": plan,
             "suggested_tasks": tasks
         }
-    
+
     def _extract_tasks_from_plan(self, plan: str) -> List[Dict[str, str]]:
         """Extract tasks from plan text if no specific task format found"""
         tasks = []
-        
+
         # Look for phase or task indicators
         for line in plan.split('\n'):
             line = line.strip()
@@ -169,13 +196,13 @@ class ClaudeIntegration:
                         "title": title[:100],  # Limit title length
                         "description": f"Complete the following task: {title}"
                     })
-        
+
         # Ensure we have at least some tasks
         if not tasks:
             tasks = self._get_default_tasks()
-        
+
         return tasks[:15]  # Limit to 15 tasks
-    
+
     def _get_default_tasks(self) -> List[Dict[str, str]]:
         """Get default tasks if parsing fails"""
         return [
@@ -200,13 +227,13 @@ class ClaudeIntegration:
                 "description": "Create comprehensive unit and integration tests"
             }
         ]
-    
+
     def _generate_mock_plan(self, project_info: Dict) -> Dict:
         """Generate a mock plan when Claude is not available"""
         overview = project_info.get('project_overview', '')
         prompt = project_info.get('initial_prompt', '')
         project_name = project_info.get('project_name', 'Project')
-        
+
         # Mock implementation - replace with actual Claude call
         plan = f"""# Project Plan: {project_name}
 
@@ -306,7 +333,7 @@ Tasks:
 - Zero critical security vulnerabilities
 - Comprehensive documentation
 """
-        
+
         # Generate suggested tasks based on the plan
         suggested_tasks = [
             {
@@ -350,44 +377,45 @@ Tasks:
                 "description": "Write complete documentation including API docs, user guides, deployment instructions, and developer documentation."
             }
         ]
-        
+
         return {
             "plan": plan,
             "suggested_tasks": suggested_tasks
         }
-    
+
     def execute_command(self, command_name: str, variables: Dict) -> str:
         """
         Execute a Claude command file with variables
-        
+
         Args:
             command_name: Name of the command file (without .md extension)
             variables: Dictionary of variables to replace in the command
-            
+
         Returns:
             Command output
         """
         command_path = self.commands_dir / f"{command_name}.md"
-        
+
         if not command_path.exists():
             raise ValueError(f"Command file {command_name}.md not found")
-        
+
         # Read command file
         with open(command_path, 'r') as f:
             command_content = f.read()
-        
+
         # Replace variables
         for key, value in variables.items():
-            command_content = command_content.replace(f"{{{{{key}}}}}", str(value))
-        
+            command_content = command_content.replace(
+                f"{{{{{key}}}}}", str(value))
+
         # In production, this would call Claude CLI
         # For now, return a mock response
         return f"Executed command: {command_name} with variables: {variables}"
-    
+
     def create_agent_prompt(self, task_title: str, task_description: str, project_context: Dict) -> str:
         """
         Create a prompt file for Claude Code to execute a specific task.
-        
+
         This is how SplitMind orchestrates - by creating prompts that 
         Claude Code agents can execute in their worktrees.
         """
